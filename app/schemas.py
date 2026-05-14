@@ -74,3 +74,15 @@ class TodayStats(BaseModel):
     completions: int
     minutes: int
     calories: int
+
+
+class RecentCompletion(BaseModel):
+    completion_id: int
+    task_id: int
+    task_name: str
+    room: str
+    floor: str
+    icon: str
+    minutes: int
+    calories: int
+    completed_at: datetime

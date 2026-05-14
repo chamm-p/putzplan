@@ -169,48 +169,93 @@ input, textarea { font-family: inherit; color: var(--text); }
 }
 
 /* ===== Filter Bar ===== */
-.filter-bar { padding: 4px 0 8px; }
-.filter-row {
-  display: flex; gap: 8px;
-  overflow-x: auto;
-  padding: 6px 20px;
-  scrollbar-width: none;
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  padding: 8px 20px 12px;
 }
-.filter-row::-webkit-scrollbar { display: none; }
-.filter-chip {
-  flex-shrink: 0;
-  padding: 8px 14px;
+.filter-select {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
   background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  color: var(--text);
+  padding: 12px 38px 12px 18px;
+  font-size: 14px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  min-width: 0;
 }
-.filter-chip:active { transform: scale(0.95); }
-.filter-chip.active {
-  background: var(--gradient-primary);
-  color: var(--primary-text);
-  border-color: transparent;
+.filter-select:focus { border-color: var(--primary); }
+.filter-select option { background: var(--card); color: var(--text); }
+.filter-select.active {
+  background-color: rgba(45,212,191,0.12);
+  border-color: var(--primary);
+  color: var(--primary-2);
 }
-.filter-chip .count {
+
+/* ===== Task-State-Badges (auch nicht-fällig) ===== */
+.task-card.not-due { opacity: 0.55; }
+.task-card.not-due .task-checkbox { border-style: dashed; }
+.next-badge {
   display: inline-block;
-  background: rgba(0,0,0,0.15);
-  color: inherit;
-  font-size: 11px;
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: var(--radius-pill);
-  margin-left: 6px;
+  font-size: 10px;
   font-weight: 700;
-}
-.filter-chip:not(.active) .count {
   background: var(--bg-elevated);
   color: var(--text-dim);
+  margin-left: 4px;
 }
+
+/* ===== Recent / Undo Card ===== */
+.recent-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.recent-card .recent-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(45,212,191,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.recent-info { flex: 1; min-width: 0; }
+.recent-name { font-weight: 600; color: var(--text); }
+.recent-meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+.recent-undo {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.recent-undo:hover { color: var(--danger); border-color: var(--danger); }
+.recent-undo:active { transform: scale(0.94); }
 
 /* ===== Due List ===== */
 .due-list { padding: 0 16px; }

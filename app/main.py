@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 import logging
+import time
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
@@ -11,6 +12,9 @@ from app.routers import auth_router, tasks, rooms, stats, chat
 from app.services.seed import sync_from_yaml
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+# Version wechselt mit jedem Container-Start -> Frontend kann Drift erkennen
+APP_VERSION = str(int(time.time()))
 
 
 def _migrate_schema():
@@ -32,6 +36,27 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Putzplan", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    response: Response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith(".html"):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+    elif path.startswith("/static/"):
+        # statische Assets: revalidate, aber nicht hart cachen
+        response.headers["Cache-Control"] = "no-cache"
+    elif path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    response.headers["X-App-Version"] = APP_VERSION
+    return response
+
+
+@app.get("/api/version")
+def version():
+    return {"version": APP_VERSION}
+
 
 app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])

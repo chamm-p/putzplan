@@ -1,10 +1,15 @@
 // ===== State =====
 let token = localStorage.getItem('token');
 let pollTimer = null;
+let versionTimer = null;
 let currentPage = 'today';
+let appVersion = null;
 let lastDueTasks = [];
-let filterFloor = null;   // null = alle
-let filterRoom = null;    // null = alle
+let lastAllTasks = [];
+let filterFloor = '';
+let filterRoom = '';
+let allFilterFloor = '';
+let allFilterRoom = '';
 
 // ===== Toast =====
 let _toastTimer = null;
@@ -113,6 +118,11 @@ function doLogout() {
 async function showApp() {
   document.getElementById('auth-screen').classList.remove('active');
   document.getElementById('main-app').classList.add('active');
+  // Aktuelle Version festhalten -> künftiger Drift triggert Reload
+  try {
+    const v = await (await fetch('/api/version', { cache: 'no-store' })).json();
+    appVersion = v.version;
+  } catch (e) {}
   const me = await api('/api/auth/me');
   if (me) {
     document.getElementById('header-greet').textContent = `Hallo, ${me.username}!`;
@@ -132,7 +142,7 @@ function navigateTo(page) {
   document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
 
   if (page === 'today') loadToday();
-  if (page === 'rooms') loadRooms();
+  if (page === 'all') loadAll();
   if (page === 'stats') loadStats();
 }
 
@@ -141,16 +151,69 @@ function startPolling() {
   stopPolling();
   pollTimer = setInterval(() => {
     if (currentPage === 'today') loadToday(true);
+    if (currentPage === 'all') loadAll(true);
     if (currentPage === 'stats') loadStats(true);
   }, 15000);
+  // Version-Check alle 30s -> hard reload bei Drift
+  versionTimer = setInterval(checkVersion, 30000);
 }
-function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  if (versionTimer) { clearInterval(versionTimer); versionTimer = null; }
+}
+
+async function checkVersion() {
+  try {
+    const r = await fetch('/api/version', { cache: 'no-store' });
+    const d = await r.json();
+    if (appVersion && d.version && d.version !== appVersion) {
+      // Server hat neu gestartet -> Frontend neu laden
+      window.location.reload();
+    }
+    if (d.version) appVersion = d.version;
+  } catch (e) {}
+}
+
+// ===== Filter Helpers =====
+function buildFloorOptions(tasks, selected) {
+  const counts = {};
+  const order = [];
+  for (const t of tasks) {
+    if (!counts[t.floor]) { counts[t.floor] = 0; order.push(t.floor); }
+    counts[t.floor]++;
+  }
+  let html = `<option value="">🏠 Alle Etagen (${tasks.length})</option>`;
+  for (const f of order) {
+    const sel = selected === f ? 'selected' : '';
+    html += `<option value="${escAttr(f)}" ${sel}>${escHtml(f)} (${counts[f]})</option>`;
+  }
+  return html;
+}
+
+function buildRoomOptions(tasks, floor, selected) {
+  const counts = {};
+  const icons = {};
+  const order = [];
+  for (const t of tasks) {
+    if (t.floor !== floor) continue;
+    if (!counts[t.room]) { counts[t.room] = 0; order.push(t.room); icons[t.room] = t.icon; }
+    counts[t.room]++;
+  }
+  const total = order.reduce((s, r) => s + counts[r], 0);
+  let html = `<option value="">Alle Räume (${total})</option>`;
+  for (const r of order) {
+    const sel = selected === r ? 'selected' : '';
+    html += `<option value="${escAttr(r)}" ${sel}>${icons[r]} ${escHtml(r)} (${counts[r]})</option>`;
+  }
+  return html;
+}
 
 // ===== Today =====
 async function loadToday(silent) {
-  const [tasks, today] = await Promise.all([
+  const [tasks, today, recent] = await Promise.all([
     api('/api/tasks/due'),
     api('/api/stats/today'),
+    api('/api/tasks/recent?limit=10'),
   ]);
   if (!tasks) return;
 
@@ -159,72 +222,40 @@ async function loadToday(silent) {
 
   lastDueTasks = tasks;
 
-  // Filter validieren: wenn aktueller Filter-Raum/Etage nichts mehr enthält, reset
-  if (filterFloor && !tasks.some(t => t.floor === filterFloor)) filterFloor = null;
-  if (filterRoom && !tasks.some(t => t.room === filterRoom && t.floor === filterFloor)) filterRoom = null;
+  // Filter validieren
+  if (filterFloor && !tasks.some(t => t.floor === filterFloor)) filterFloor = '';
+  if (filterRoom && !tasks.some(t => t.room === filterRoom && t.floor === filterFloor)) filterRoom = '';
 
-  renderFilters();
+  renderTodayFilters();
   renderDueList();
+  renderRecent(recent || []);
 }
 
-function setFilterFloor(floor) {
-  if (filterFloor === floor) {
-    filterFloor = null;
-    filterRoom = null;
+function renderTodayFilters() {
+  const floorSel = document.getElementById('filter-floor-select');
+  const roomSel = document.getElementById('filter-room-select');
+  floorSel.innerHTML = buildFloorOptions(lastDueTasks, filterFloor);
+  floorSel.classList.toggle('active', !!filterFloor);
+
+  if (filterFloor) {
+    roomSel.innerHTML = buildRoomOptions(lastDueTasks, filterFloor, filterRoom);
+    roomSel.classList.remove('hidden');
+    roomSel.classList.toggle('active', !!filterRoom);
   } else {
-    filterFloor = floor;
-    filterRoom = null;
+    roomSel.classList.add('hidden');
   }
-  renderFilters();
-  renderDueList();
 }
 
-function setFilterRoom(room) {
-  filterRoom = filterRoom === room ? null : room;
-  renderFilters();
+function onFilterChange() {
+  const newFloor = document.getElementById('filter-floor-select').value;
+  if (newFloor !== filterFloor) {
+    filterFloor = newFloor;
+    filterRoom = '';
+  } else {
+    filterRoom = document.getElementById('filter-room-select').value || '';
+  }
+  renderTodayFilters();
   renderDueList();
-}
-
-function renderFilters() {
-  // Etagen + Counts
-  const floorCounts = {};
-  for (const t of lastDueTasks) floorCounts[t.floor] = (floorCounts[t.floor] || 0) + 1;
-  const floorOrder = [];
-  for (const t of lastDueTasks) if (!floorOrder.includes(t.floor)) floorOrder.push(t.floor);
-
-  const floorsHtml = [
-    `<button class="filter-chip ${!filterFloor ? 'active' : ''}" onclick="setFilterFloor(null)">Alle <span class="count">${lastDueTasks.length}</span></button>`,
-    ...floorOrder.map(f =>
-      `<button class="filter-chip ${filterFloor === f ? 'active' : ''}" onclick="setFilterFloor(${JSON.stringify(f)})">${escHtml(f)} <span class="count">${floorCounts[f]}</span></button>`
-    ),
-  ].join('');
-  document.getElementById('filter-floors').innerHTML = floorsHtml;
-
-  // Räume nur wenn Etage gewählt
-  const roomsRow = document.getElementById('filter-rooms');
-  if (!filterFloor) {
-    roomsRow.classList.add('hidden');
-    roomsRow.innerHTML = '';
-    return;
-  }
-  const roomCounts = {};
-  const roomOrder = [];
-  for (const t of lastDueTasks) {
-    if (t.floor !== filterFloor) continue;
-    roomCounts[t.room] = (roomCounts[t.room] || 0) + 1;
-    if (!roomOrder.includes(t.room)) roomOrder.push(t.room);
-  }
-  const roomTotal = roomOrder.reduce((s, r) => s + roomCounts[r], 0);
-  const roomsHtml = [
-    `<button class="filter-chip ${!filterRoom ? 'active' : ''}" onclick="setFilterRoom(null)">Alle <span class="count">${roomTotal}</span></button>`,
-    ...roomOrder.map(r => {
-      const t0 = lastDueTasks.find(t => t.room === r && t.floor === filterFloor);
-      const icon = t0 ? t0.icon : '🧹';
-      return `<button class="filter-chip ${filterRoom === r ? 'active' : ''}" onclick="setFilterRoom(${JSON.stringify(r)})">${icon} ${escHtml(r)} <span class="count">${roomCounts[r]}</span></button>`;
-    }),
-  ].join('');
-  roomsRow.innerHTML = roomsHtml;
-  roomsRow.classList.remove('hidden');
 }
 
 function renderDueList() {
@@ -235,7 +266,6 @@ function renderDueList() {
   if (filterFloor) filtered = filtered.filter(t => t.floor === filterFloor);
   if (filterRoom) filtered = filtered.filter(t => t.room === filterRoom);
 
-  // Titel
   if (filterRoom) title.textContent = `${filterFloor} · ${filterRoom}`;
   else if (filterFloor) title.textContent = filterFloor;
   else title.textContent = 'Fällige Aufgaben';
@@ -253,7 +283,7 @@ function renderDueList() {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">🎯</div>
-        <div class="title">Hier ist gerade nichts zu tun.</div>
+        <div class="title">Hier ist nichts zu tun.</div>
         <div class="subtitle">In diesem Bereich ist alles aktuell.</div>
       </div>`;
     return;
@@ -261,12 +291,104 @@ function renderDueList() {
   list.innerHTML = filtered.map(renderTaskCard).join('');
 }
 
+function renderRecent(entries) {
+  const titleRow = document.getElementById('recent-title-row');
+  const list = document.getElementById('recent-list');
+  if (!entries || entries.length === 0) {
+    titleRow.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  titleRow.style.display = '';
+  list.innerHTML = entries.map(e => `
+    <div class="recent-card" data-cid="${e.completion_id}">
+      <div class="recent-icon">${e.icon}</div>
+      <div class="recent-info">
+        <div class="recent-name">${escHtml(e.task_name)}</div>
+        <div class="recent-meta">${escHtml(e.room)} · ${e.calories} kcal · ${formatRelative(e.completed_at)}</div>
+      </div>
+      <button class="recent-undo" onclick="undoCompletion(${e.completion_id})">Rückgängig</button>
+    </div>
+  `).join('');
+}
+
+function formatRelative(iso) {
+  const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return 'gerade eben';
+  if (diff < 3600) return `vor ${Math.floor(diff/60)} Min`;
+  if (diff < 86400) return `vor ${Math.floor(diff/3600)} Std`;
+  return `vor ${Math.floor(diff/86400)} T`;
+}
+
+// ===== Alle Aufgaben =====
+async function loadAll(silent) {
+  const tasks = await api('/api/tasks/all');
+  if (!tasks) return;
+  lastAllTasks = tasks;
+
+  if (allFilterFloor && !tasks.some(t => t.floor === allFilterFloor)) allFilterFloor = '';
+  if (allFilterRoom && !tasks.some(t => t.room === allFilterRoom && t.floor === allFilterFloor)) allFilterRoom = '';
+
+  renderAllFilters();
+  renderAllList();
+}
+
+function renderAllFilters() {
+  const floorSel = document.getElementById('all-floor-select');
+  const roomSel = document.getElementById('all-room-select');
+  floorSel.innerHTML = buildFloorOptions(lastAllTasks, allFilterFloor);
+  floorSel.classList.toggle('active', !!allFilterFloor);
+
+  if (allFilterFloor) {
+    roomSel.innerHTML = buildRoomOptions(lastAllTasks, allFilterFloor, allFilterRoom);
+    roomSel.classList.remove('hidden');
+    roomSel.classList.toggle('active', !!allFilterRoom);
+  } else {
+    roomSel.classList.add('hidden');
+  }
+}
+
+function onAllFilterChange() {
+  const newFloor = document.getElementById('all-floor-select').value;
+  if (newFloor !== allFilterFloor) {
+    allFilterFloor = newFloor;
+    allFilterRoom = '';
+  } else {
+    allFilterRoom = document.getElementById('all-room-select').value || '';
+  }
+  renderAllFilters();
+  renderAllList();
+}
+
+function renderAllList() {
+  const list = document.getElementById('all-list');
+  let filtered = lastAllTasks;
+  if (allFilterFloor) filtered = filtered.filter(t => t.floor === allFilterFloor);
+  if (allFilterRoom) filtered = filtered.filter(t => t.room === allFilterRoom);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><div class="title">Keine Tasks</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(renderTaskCard).join('');
+}
+
 function renderTaskCard(t) {
-  const overdue = t.overdue_days > 0;
+  const isDue = !t.last_completed_at || t.overdue_days > 0;
   const veryOverdue = t.overdue_days > 7;
-  const cls = veryOverdue ? 'very-overdue' : overdue ? 'overdue' : '';
+  const cls = !isDue ? 'not-due' : veryOverdue ? 'very-overdue' : (t.overdue_days > 0 ? 'overdue' : '');
   const freqClass = `freq-${t.frequency}`;
   const freqLabel = { weekly: 'Woche', monthly: 'Monat', yearly: 'Jahr' }[t.frequency] || t.frequency;
+
+  let statusBadge = '';
+  if (!isDue) {
+    // Berechne wann fällig: last_completed_at + Periode - jetzt
+    const freqDays = { weekly: 7, monthly: 30, yearly: 365 }[t.frequency] || 7;
+    const last = new Date(t.last_completed_at + (t.last_completed_at.endsWith('Z') ? '' : 'Z'));
+    const dueIn = Math.ceil((last.getTime() + freqDays*86400000 - Date.now()) / 86400000);
+    statusBadge = `<span class="next-badge">fällig in ${dueIn} T</span>`;
+  }
   return `
     <div class="task-card ${cls}" data-task-id="${t.id}">
       <div class="overdue-stripe"></div>
@@ -276,6 +398,7 @@ function renderTaskCard(t) {
         <div class="task-meta">
           <span class="task-room"><span class="icon">${t.icon}</span>${escHtml(t.room)}</span>
           <span class="freq-badge ${freqClass}">${freqLabel}</span>
+          ${statusBadge}
         </div>
       </div>
       <div class="task-stats">
@@ -304,9 +427,15 @@ async function completeTask(id, ev) {
     `+${result.calories} kcal · ${result.minutes} Min`,
     () => undoCompletion(result.last_completion_id)
   );
-  if (card) {
+  const reload = () => {
+    if (currentPage === 'all') loadAll(true);
+    else loadToday(true);
+  };
+  if (card && currentPage === 'today') {
     card.classList.add('completing');
-    setTimeout(() => loadToday(true), 350);
+    setTimeout(reload, 350);
+  } else {
+    reload();
   }
 }
 
@@ -315,35 +444,11 @@ async function undoCompletion(completionId) {
   const res = await api(`/api/tasks/completions/${completionId}`, { method: 'DELETE' });
   if (res) {
     showToast('Rückgängig gemacht', '');
-    loadToday(true);
+    if (currentPage === 'all') loadAll(true);
+    else loadToday(true);
   }
 }
 
-// ===== Rooms =====
-async function loadRooms() {
-  const rooms = await api('/api/rooms');
-  if (!rooms) return;
-  const groups = {};
-  for (const r of rooms) {
-    if (!groups[r.floor]) groups[r.floor] = [];
-    groups[r.floor].push(r);
-  }
-  const html = Object.entries(groups).map(([floor, rs]) => `
-    <div class="floor-group">
-      <div class="floor-title">${escHtml(floor)}</div>
-      ${rs.map(r => `
-        <div class="room-card">
-          <div class="room-icon">${r.icon}</div>
-          <div class="room-info">
-            <div class="room-name">${escHtml(r.name)}</div>
-            <div class="room-sub">${escHtml(r.floor)}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
-  document.getElementById('rooms-list').innerHTML = html;
-}
 
 // ===== Stats =====
 async function loadStats(silent) {
@@ -474,6 +579,9 @@ function escHtml(s) {
   const d = document.createElement('div');
   d.textContent = s == null ? '' : String(s);
   return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ===== URL Token (OIDC callback) =====

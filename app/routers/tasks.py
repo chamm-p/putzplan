@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import Room, Task, TaskCompletion, User
-from app.schemas import TaskOut
+from app.schemas import TaskOut, RecentCompletion
 from app.services.scheduling import is_due, overdue_days
 
 router = APIRouter()
@@ -89,6 +89,37 @@ def list_all(_: User = Depends(get_current_user), db: Session = Depends(get_db))
     )
     latest = _latest_completion_map(db)
     return [_serialize(task, room, latest.get(task.id)) for task, room in tasks]
+
+
+@router.get("/recent", response_model=list[RecentCompletion])
+def recent_completions(
+    limit: int = 10,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(TaskCompletion, Task, Room)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .join(Room, Room.id == Task.room_id)
+        .filter(TaskCompletion.user_id == user.id)
+        .order_by(TaskCompletion.completed_at.desc())
+        .limit(max(1, min(limit, 50)))
+        .all()
+    )
+    return [
+        RecentCompletion(
+            completion_id=tc.id,
+            task_id=task.id,
+            task_name=task.name,
+            room=room.name,
+            floor=room.floor,
+            icon=room.icon,
+            minutes=tc.minutes,
+            calories=tc.calories,
+            completed_at=tc.completed_at,
+        )
+        for tc, task, room in rows
+    ]
 
 
 @router.delete("/completions/{completion_id}")

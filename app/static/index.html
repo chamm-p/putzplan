@@ -65,18 +65,25 @@
       </div>
 
       <div class="filter-bar">
-        <div class="filter-row" id="filter-floors"></div>
-        <div class="filter-row hidden" id="filter-rooms"></div>
+        <select id="filter-floor-select" class="filter-select" onchange="onFilterChange()"></select>
+        <select id="filter-room-select" class="filter-select hidden" onchange="onFilterChange()"></select>
       </div>
 
       <div class="section-title" id="due-title">Fällige Aufgaben</div>
       <div id="due-list" class="due-list"></div>
+
+      <div class="section-title" id="recent-title-row" style="display:none">Zuletzt erledigt</div>
+      <div id="recent-list" class="due-list"></div>
     </div>
 
-    <!-- Räume -->
-    <div id="page-rooms" class="page">
-      <div class="header"><h1>Räume</h1></div>
-      <div id="rooms-list" class="rooms-list"></div>
+    <!-- Alle Aufgaben (vorher: Räume) -->
+    <div id="page-all" class="page">
+      <div class="header"><h1>Alle Aufgaben</h1></div>
+      <div class="filter-bar">
+        <select id="all-floor-select" class="filter-select" onchange="onAllFilterChange()"></select>
+        <select id="all-room-select" class="filter-select hidden" onchange="onAllFilterChange()"></select>
+      </div>
+      <div id="all-list" class="due-list"></div>
     </div>
 
     <!-- Putzkönig / Stats -->
@@ -126,7 +133,7 @@
 
     <nav class="bottom-nav">
       <button class="nav-item active" data-page="today" onclick="navigateTo('today')"><span class="nav-icon">✨</span>Heute</button>
-      <button class="nav-item" data-page="rooms" onclick="navigateTo('rooms')"><span class="nav-icon">🏠</span>Räume</button>
+      <button class="nav-item" data-page="all" onclick="navigateTo('all')"><span class="nav-icon">📋</span>Alle</button>
       <button class="nav-item" data-page="stats" onclick="navigateTo('stats')"><span class="nav-icon">🏆</span>Putzkönig</button>
       <button class="nav-item" data-page="chat" onclick="navigateTo('chat')"><span class="nav-icon">💬</span>Coach</button>
       <button class="nav-item" data-page="profile" onclick="navigateTo('profile')"><span class="nav-icon">👤</span>Profil</button>
