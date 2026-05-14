@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+data/putzplan.db
+data/putzplan.db.*
+backups/*.db.gz
+*.egg-info/
+.claude/

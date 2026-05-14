@@ -1,0 +1,159 @@
+# Putzplan – Tasks pro Raum
+# Wird bei jedem App-Start synchronisiert (idempotent).
+# Entfernen eines Tasks => Task wird inaktiv, Historie bleibt erhalten.
+#
+# frequency: weekly | monthly | yearly
+# minutes:   geschätzte Dauer
+# calories:  geschätzter Kalorienverbrauch (Default = minutes * 4)
+# hint:      optionaler Tipp/Hinweis
+
+floors:
+  - name: Untergeschoss
+    rooms:
+      - name: Flur
+        icon: 🚪
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 5, calories: 25 }
+          - { name: Boden wischen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Spiegel und Bilderrahmen abstauben, frequency: monthly, minutes: 10, calories: 30 }
+          - { name: Türen abwischen, frequency: monthly, minutes: 10, calories: 30 }
+
+      - name: Bad
+        icon: 🛁
+        tasks:
+          - { name: Toilette putzen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Waschbecken und Armaturen, frequency: weekly, minutes: 5, calories: 25 }
+          - { name: Dusche / Wanne reinigen, frequency: weekly, minutes: 12, calories: 55 }
+          - { name: Spiegel polieren, frequency: weekly, minutes: 3, calories: 12 }
+          - { name: Boden wischen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Kalk an Armaturen entfernen, frequency: monthly, minutes: 15, calories: 50 }
+          - { name: Lüftung / Abluft säubern, frequency: monthly, minutes: 8, calories: 25 }
+          - { name: Silikonfugen prüfen und reinigen, frequency: yearly, minutes: 30, calories: 90 }
+
+      - name: Kleiderzimmer
+        icon: 👕
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 6, calories: 30 }
+          - { name: Staub wischen auf Regalen, frequency: monthly, minutes: 10, calories: 25 }
+          - { name: Kleidung sortieren / ausmisten, frequency: yearly, minutes: 60, calories: 100 }
+
+  - name: Erdgeschoss
+    rooms:
+      - name: Wohnzimmer
+        icon: 🛋️
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 10, calories: 50 }
+          - { name: Staub wischen (Möbel, Regale), frequency: weekly, minutes: 10, calories: 35 }
+          - { name: Couchtisch reinigen, frequency: weekly, minutes: 5, calories: 15 }
+          - { name: Boden wischen, frequency: weekly, minutes: 10, calories: 45 }
+          - { name: Polster absaugen, frequency: monthly, minutes: 15, calories: 60 }
+          - { name: Lampen und Schirme abstauben, frequency: monthly, minutes: 10, calories: 25 }
+          - { name: Fenster putzen, frequency: yearly, minutes: 30, calories: 110 }
+
+      - name: Küche
+        icon: 🍳
+        tasks:
+          - { name: Arbeitsplatte reinigen, frequency: weekly, minutes: 5, calories: 20 }
+          - { name: Herd und Kochfeld putzen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Spüle und Armatur, frequency: weekly, minutes: 5, calories: 20 }
+          - { name: Boden wischen, frequency: weekly, minutes: 10, calories: 45 }
+          - { name: Kühlschrank außen abwischen, frequency: weekly, minutes: 4, calories: 15 }
+          - { name: Mikrowelle innen reinigen, frequency: monthly, minutes: 8, calories: 25 }
+          - { name: Backofen reinigen, frequency: monthly, minutes: 25, calories: 90 }
+          - { name: Kühlschrank innen reinigen, frequency: monthly, minutes: 20, calories: 70 }
+          - { name: Dunstabzug-Filter, frequency: monthly, minutes: 15, calories: 50 }
+          - { name: Geschirrspüler-Sieb reinigen, frequency: monthly, minutes: 10, calories: 25 }
+          - { name: Schränke innen ausmisten, frequency: yearly, minutes: 45, calories: 130 }
+
+      - name: Treppe (EG → OG)
+        icon: 🪜
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 8, calories: 50 }
+          - { name: Stufen feucht wischen, frequency: weekly, minutes: 10, calories: 60 }
+          - { name: Geländer abwischen, frequency: monthly, minutes: 8, calories: 20 }
+
+      - name: Garten
+        icon: 🌳
+        tasks:
+          - { name: Rasen mähen, frequency: weekly, minutes: 45, calories: 250, hint: "April–Oktober" }
+          - { name: Terrasse fegen, frequency: weekly, minutes: 10, calories: 50 }
+          - { name: Gartenmöbel abwischen, frequency: monthly, minutes: 15, calories: 45 }
+          - { name: Beete jäten, frequency: monthly, minutes: 30, calories: 130 }
+          - { name: Hecke schneiden, frequency: yearly, minutes: 90, calories: 350 }
+
+  - name: Obergeschoss
+    rooms:
+      - name: Schlafzimmer
+        icon: 🛏️
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 8, calories: 40 }
+          - { name: Bettwäsche wechseln, frequency: weekly, minutes: 10, calories: 35 }
+          - { name: Staub wischen, frequency: weekly, minutes: 8, calories: 25 }
+          - { name: Unter dem Bett saugen, frequency: monthly, minutes: 10, calories: 45 }
+          - { name: Matratze wenden, frequency: monthly, minutes: 8, calories: 50 }
+          - { name: Lampenschirme abstauben, frequency: monthly, minutes: 6, calories: 15 }
+
+      - name: Arbeitszimmer
+        icon: 💻
+        tasks:
+          - { name: Schreibtisch abwischen, frequency: weekly, minutes: 5, calories: 15 }
+          - { name: Staubsaugen, frequency: weekly, minutes: 6, calories: 30 }
+          - { name: Monitor und Tastatur reinigen, frequency: monthly, minutes: 8, calories: 20 }
+          - { name: Ablage / Papier sortieren, frequency: monthly, minutes: 20, calories: 40 }
+
+      - name: Bad OG
+        icon: 🛁
+        tasks:
+          - { name: Toilette putzen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Waschbecken und Armaturen, frequency: weekly, minutes: 5, calories: 25 }
+          - { name: Dusche / Wanne reinigen, frequency: weekly, minutes: 12, calories: 55 }
+          - { name: Spiegel polieren, frequency: weekly, minutes: 3, calories: 12 }
+          - { name: Boden wischen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Kalk an Armaturen entfernen, frequency: monthly, minutes: 15, calories: 50 }
+          - { name: Silikonfugen prüfen, frequency: yearly, minutes: 30, calories: 90 }
+
+      - name: Gäste-WC
+        icon: 🚽
+        tasks:
+          - { name: Toilette putzen, frequency: weekly, minutes: 6, calories: 25 }
+          - { name: Waschbecken reinigen, frequency: weekly, minutes: 4, calories: 15 }
+          - { name: Spiegel polieren, frequency: weekly, minutes: 2, calories: 8 }
+          - { name: Boden wischen, frequency: weekly, minutes: 5, calories: 20 }
+
+      - name: Flur OG
+        icon: 🚪
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 5, calories: 25 }
+          - { name: Boden wischen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Türen abwischen, frequency: monthly, minutes: 10, calories: 30 }
+
+      - name: Treppe (OG → DG)
+        icon: 🪜
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 6, calories: 40 }
+          - { name: Stufen feucht wischen, frequency: weekly, minutes: 8, calories: 45 }
+          - { name: Geländer abwischen, frequency: monthly, minutes: 6, calories: 15 }
+
+      - name: Terrasse OG
+        icon: 🌞
+        tasks:
+          - { name: Terrasse fegen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Möbel abwischen, frequency: monthly, minutes: 12, calories: 35 }
+          - { name: Fugen säubern, frequency: yearly, minutes: 60, calories: 200 }
+
+  - name: Dachgeschoss
+    rooms:
+      - name: Dachzimmer
+        icon: 🏠
+        tasks:
+          - { name: Staubsaugen, frequency: weekly, minutes: 8, calories: 40 }
+          - { name: Staub wischen, frequency: weekly, minutes: 6, calories: 20 }
+          - { name: Fenster putzen innen, frequency: monthly, minutes: 15, calories: 50 }
+          - { name: Dachschrägen entstauben, frequency: yearly, minutes: 30, calories: 90 }
+
+      - name: Terrasse DG
+        icon: 🌅
+        tasks:
+          - { name: Terrasse fegen, frequency: weekly, minutes: 8, calories: 35 }
+          - { name: Möbel abwischen, frequency: monthly, minutes: 12, calories: 35 }
+          - { name: Fugen säubern, frequency: yearly, minutes: 60, calories: 200 }

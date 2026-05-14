@@ -1,0 +1,60 @@
+services:
+  putzplan_app:
+    build: .
+    container_name: putzplan
+    ports:
+      - "${APP_PORT:-7801}:8000"
+    volumes:
+      - ./data:/app/data
+      - ./app:/app/app
+      - ./seeds:/app/seeds
+    env_file:
+      - .env
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  backup:
+    image: alpine:3.20
+    container_name: putzplan-backup
+    depends_on:
+      - putzplan_app
+    volumes:
+      - ./data:/data:ro
+      - ./backups:/backups
+    environment:
+      RETENTION_DAYS: "14"
+      BACKUP_INTERVAL_SECONDS: "86400"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        apk add --no-cache sqlite gzip > /dev/null
+        echo "Backup service started (retention: $${RETENTION_DAYS}d, interval: $${BACKUP_INTERVAL_SECONDS}s)"
+        while true; do
+          if [ -f /data/putzplan.db ]; then
+            DATE=$$(date -u +%Y-%m-%dT%H-%M-%SZ)
+            sqlite3 /data/putzplan.db ".backup /tmp/b.db"
+            gzip -c /tmp/b.db > "/backups/putzplan-$$DATE.db.gz"
+            rm -f /tmp/b.db
+            echo "[$$(date -u +%FT%TZ)] backup ok -> putzplan-$$DATE.db.gz"
+            find /backups -name 'putzplan-*.db.gz' -type f -mtime +$${RETENTION_DAYS} -delete
+          fi
+          sleep $${BACKUP_INTERVAL_SECONDS}
+        done
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "3"

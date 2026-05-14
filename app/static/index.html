@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Putzplan">
+<meta name="theme-color" content="#0b0f1a">
+<title>Putzplan</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+</head>
+<body>
+<div class="app">
+  <div id="toast" class="toast"></div>
+
+  <!-- Auth -->
+  <div id="auth-screen" class="auth-screen active">
+    <div class="auth-logo">🧹</div>
+    <h1 class="auth-title">Putzplan</h1>
+    <p class="auth-subtitle">Gemeinsam glänzen.</p>
+
+    <div class="auth-form" id="login-form">
+      <div id="auth-error" class="auth-error hidden"></div>
+
+      <button class="btn btn-oidc hidden" id="oidc-btn" onclick="doOidcLogin()">
+        <span id="oidc-btn-label">Mit Keycloak anmelden</span>
+      </button>
+      <div class="auth-divider hidden" id="oidc-divider"><span>oder</span></div>
+
+      <input type="text" id="login-user" placeholder="Benutzername" autocomplete="username">
+      <input type="password" id="login-pass" placeholder="Passwort" autocomplete="current-password">
+      <button class="btn btn-primary" onclick="doLogin()">Anmelden</button>
+      <button class="btn btn-secondary" data-show-when="registration" onclick="showRegister()">Noch kein Konto? Registrieren</button>
+    </div>
+
+    <div class="auth-form hidden" data-show-when="registration" id="register-form">
+      <div id="reg-error" class="auth-error hidden"></div>
+      <input type="text" id="reg-user" placeholder="Benutzername" autocomplete="username">
+      <input type="email" id="reg-email" placeholder="E-Mail" autocomplete="email">
+      <input type="password" id="reg-pass" placeholder="Passwort" autocomplete="new-password">
+      <button class="btn btn-primary" onclick="doRegister()">Registrieren</button>
+      <button class="btn btn-secondary" onclick="showLogin()">Bereits registriert? Anmelden</button>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="main-app" class="main-app">
+
+    <!-- Heute -->
+    <div id="page-today" class="page active">
+      <div class="header">
+        <div>
+          <div class="header-greet" id="header-greet">Hi!</div>
+          <h1>Heute</h1>
+        </div>
+        <div class="today-pills">
+          <div class="pill pill-tasks"><span id="pill-done">0</span><small>erledigt</small></div>
+          <div class="pill pill-cal"><span id="pill-cal">0</span><small>kcal</small></div>
+        </div>
+      </div>
+
+      <div class="section-title">Fällige Aufgaben</div>
+      <div id="due-list" class="due-list"></div>
+    </div>
+
+    <!-- Räume -->
+    <div id="page-rooms" class="page">
+      <div class="header"><h1>Räume</h1></div>
+      <div id="rooms-list" class="rooms-list"></div>
+    </div>
+
+    <!-- Putzkönig / Stats -->
+    <div id="page-stats" class="page">
+      <div class="header"><h1>Putzkönig</h1></div>
+      <div class="stats-page">
+        <div class="lb-card">
+          <h3>🏆 Letzte <span id="lb-days">10</span> Tage</h3>
+          <div id="lb-putzkoenig" class="lb-list"></div>
+        </div>
+        <div class="lb-card">
+          <h3>📅 Heute</h3>
+          <div id="lb-today" class="lb-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div id="page-chat" class="page">
+      <div class="header"><h1>Putz-Coach</h1></div>
+      <div class="chat-page">
+        <div id="chat-log" class="chat-log">
+          <div class="chat-msg msg-bot">
+            <div class="msg-bubble">Frag mich alles rund ums Putzen, Pflegen und Flecken. Beispiel: <em>"Wie bekomme ich Kalk vom Granit?"</em></div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <button class="chat-mic" id="chat-mic" onclick="toggleVoiceChat()">🎤</button>
+          <input type="text" id="chat-text" placeholder="Frage eingeben..." onkeypress="if(event.key==='Enter')sendChatText()">
+          <button class="chat-send" onclick="sendChatText()">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profil -->
+    <div id="page-profile" class="page">
+      <div class="header"><h1>Profil</h1></div>
+      <div class="profile-page">
+        <div class="profile-card">
+          <h3>Konto</h3>
+          <div class="profile-field"><label>Benutzername</label><input id="profile-username" disabled></div>
+          <div class="profile-field"><label>E-Mail</label><input id="profile-email" disabled></div>
+        </div>
+        <button class="btn btn-danger" onclick="doLogout()">Abmelden</button>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-page="today" onclick="navigateTo('today')"><span class="nav-icon">✨</span>Heute</button>
+      <button class="nav-item" data-page="rooms" onclick="navigateTo('rooms')"><span class="nav-icon">🏠</span>Räume</button>
+      <button class="nav-item" data-page="stats" onclick="navigateTo('stats')"><span class="nav-icon">🏆</span>Putzkönig</button>
+      <button class="nav-item" data-page="chat" onclick="navigateTo('chat')"><span class="nav-icon">💬</span>Coach</button>
+      <button class="nav-item" data-page="profile" onclick="navigateTo('profile')"><span class="nav-icon">👤</span>Profil</button>
+    </nav>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
