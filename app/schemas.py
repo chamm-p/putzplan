@@ -49,6 +49,7 @@ class TaskOut(BaseModel):
     hint: str
     last_completed_at: Optional[datetime] = None
     last_completed_by: Optional[str] = None
+    last_completion_id: Optional[int] = None
     overdue_days: float = 0.0
 
 

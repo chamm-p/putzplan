@@ -34,10 +34,12 @@ def _latest_completion_map(db: Session) -> dict[int, TaskCompletion]:
 def _serialize(task: Task, room: Room, completion_info) -> TaskOut:
     last_at = None
     last_by = None
+    last_id = None
     if completion_info:
         tc, username = completion_info
         last_at = tc.completed_at
         last_by = username
+        last_id = tc.id
     return TaskOut(
         id=task.id,
         room_id=room.id,
@@ -51,6 +53,7 @@ def _serialize(task: Task, room: Room, completion_info) -> TaskOut:
         hint=task.hint,
         last_completed_at=last_at,
         last_completed_by=last_by,
+        last_completion_id=last_id,
         overdue_days=overdue_days(last_at, task.frequency),
     )
 
@@ -86,6 +89,22 @@ def list_all(_: User = Depends(get_current_user), db: Session = Depends(get_db))
     )
     latest = _latest_completion_map(db)
     return [_serialize(task, room, latest.get(task.id)) for task, room in tasks]
+
+
+@router.delete("/completions/{completion_id}")
+def undo_completion(
+    completion_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    tc = db.query(TaskCompletion).filter(TaskCompletion.id == completion_id).first()
+    if not tc:
+        raise HTTPException(status_code=404, detail="Erledigung nicht gefunden")
+    if tc.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Nur eigene Erledigungen können rückgängig gemacht werden")
+    db.delete(tc)
+    db.commit()
+    return {"ok": True, "task_id": tc.task_id}
 
 
 @router.post("/{task_id}/complete", response_model=TaskOut)

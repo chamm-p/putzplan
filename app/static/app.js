@@ -7,11 +7,31 @@ let filterFloor = null;   // null = alle
 let filterRoom = null;    // null = alle
 
 // ===== Toast =====
+let _toastTimer = null;
 function showToast(msg, type='') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 2800);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.className = 'toast', 2800);
+}
+
+function showUndoToast(msg, onUndo) {
+  const t = document.getElementById('toast');
+  t.innerHTML = `
+    <div class="toast-action">
+      <span class="toast-msg">${escHtml(msg)}</span>
+      <button id="undo-btn">Rückgängig</button>
+    </div>`;
+  t.className = 'toast show success';
+  clearTimeout(_toastTimer);
+  const btn = document.getElementById('undo-btn');
+  btn.onclick = () => {
+    clearTimeout(_toastTimer);
+    t.className = 'toast';
+    onUndo();
+  };
+  _toastTimer = setTimeout(() => { t.className = 'toast'; }, 6000);
 }
 
 function formatError(detail) {
@@ -280,10 +300,22 @@ async function completeTask(id, ev) {
     if (checkbox) checkbox.classList.remove('checked');
     return;
   }
-  showToast(`+${result.calories} kcal · ${result.minutes} Min`, 'success');
+  showUndoToast(
+    `+${result.calories} kcal · ${result.minutes} Min`,
+    () => undoCompletion(result.last_completion_id)
+  );
   if (card) {
     card.classList.add('completing');
     setTimeout(() => loadToday(true), 350);
+  }
+}
+
+async function undoCompletion(completionId) {
+  if (!completionId) return;
+  const res = await api(`/api/tasks/completions/${completionId}`, { method: 'DELETE' });
+  if (res) {
+    showToast('Rückgängig gemacht', '');
+    loadToday(true);
   }
 }
 
