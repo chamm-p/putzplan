@@ -168,6 +168,50 @@ input, textarea { font-family: inherit; color: var(--text); }
   text-transform: uppercase; letter-spacing: 0.12em;
 }
 
+/* ===== Filter Bar ===== */
+.filter-bar { padding: 4px 0 8px; }
+.filter-row {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  padding: 6px 20px;
+  scrollbar-width: none;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-chip:active { transform: scale(0.95); }
+.filter-chip.active {
+  background: var(--gradient-primary);
+  color: var(--primary-text);
+  border-color: transparent;
+}
+.filter-chip .count {
+  display: inline-block;
+  background: rgba(0,0,0,0.15);
+  color: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  margin-left: 6px;
+  font-weight: 700;
+}
+.filter-chip:not(.active) .count {
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+}
+
 /* ===== Due List ===== */
 .due-list { padding: 0 16px; }
 

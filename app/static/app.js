@@ -2,6 +2,9 @@
 let token = localStorage.getItem('token');
 let pollTimer = null;
 let currentPage = 'today';
+let lastDueTasks = [];
+let filterFloor = null;   // null = alle
+let filterRoom = null;    // null = alle
 
 // ===== Toast =====
 function showToast(msg, type='') {
@@ -134,8 +137,90 @@ async function loadToday(silent) {
   document.getElementById('pill-done').textContent = today ? today.completions : 0;
   document.getElementById('pill-cal').textContent = today ? today.calories : 0;
 
+  lastDueTasks = tasks;
+
+  // Filter validieren: wenn aktueller Filter-Raum/Etage nichts mehr enthält, reset
+  if (filterFloor && !tasks.some(t => t.floor === filterFloor)) filterFloor = null;
+  if (filterRoom && !tasks.some(t => t.room === filterRoom && t.floor === filterFloor)) filterRoom = null;
+
+  renderFilters();
+  renderDueList();
+}
+
+function setFilterFloor(floor) {
+  if (filterFloor === floor) {
+    filterFloor = null;
+    filterRoom = null;
+  } else {
+    filterFloor = floor;
+    filterRoom = null;
+  }
+  renderFilters();
+  renderDueList();
+}
+
+function setFilterRoom(room) {
+  filterRoom = filterRoom === room ? null : room;
+  renderFilters();
+  renderDueList();
+}
+
+function renderFilters() {
+  // Etagen + Counts
+  const floorCounts = {};
+  for (const t of lastDueTasks) floorCounts[t.floor] = (floorCounts[t.floor] || 0) + 1;
+  const floorOrder = [];
+  for (const t of lastDueTasks) if (!floorOrder.includes(t.floor)) floorOrder.push(t.floor);
+
+  const floorsHtml = [
+    `<button class="filter-chip ${!filterFloor ? 'active' : ''}" onclick="setFilterFloor(null)">Alle <span class="count">${lastDueTasks.length}</span></button>`,
+    ...floorOrder.map(f =>
+      `<button class="filter-chip ${filterFloor === f ? 'active' : ''}" onclick="setFilterFloor(${JSON.stringify(f)})">${escHtml(f)} <span class="count">${floorCounts[f]}</span></button>`
+    ),
+  ].join('');
+  document.getElementById('filter-floors').innerHTML = floorsHtml;
+
+  // Räume nur wenn Etage gewählt
+  const roomsRow = document.getElementById('filter-rooms');
+  if (!filterFloor) {
+    roomsRow.classList.add('hidden');
+    roomsRow.innerHTML = '';
+    return;
+  }
+  const roomCounts = {};
+  const roomOrder = [];
+  for (const t of lastDueTasks) {
+    if (t.floor !== filterFloor) continue;
+    roomCounts[t.room] = (roomCounts[t.room] || 0) + 1;
+    if (!roomOrder.includes(t.room)) roomOrder.push(t.room);
+  }
+  const roomTotal = roomOrder.reduce((s, r) => s + roomCounts[r], 0);
+  const roomsHtml = [
+    `<button class="filter-chip ${!filterRoom ? 'active' : ''}" onclick="setFilterRoom(null)">Alle <span class="count">${roomTotal}</span></button>`,
+    ...roomOrder.map(r => {
+      const t0 = lastDueTasks.find(t => t.room === r && t.floor === filterFloor);
+      const icon = t0 ? t0.icon : '🧹';
+      return `<button class="filter-chip ${filterRoom === r ? 'active' : ''}" onclick="setFilterRoom(${JSON.stringify(r)})">${icon} ${escHtml(r)} <span class="count">${roomCounts[r]}</span></button>`;
+    }),
+  ].join('');
+  roomsRow.innerHTML = roomsHtml;
+  roomsRow.classList.remove('hidden');
+}
+
+function renderDueList() {
   const list = document.getElementById('due-list');
-  if (tasks.length === 0) {
+  const title = document.getElementById('due-title');
+
+  let filtered = lastDueTasks;
+  if (filterFloor) filtered = filtered.filter(t => t.floor === filterFloor);
+  if (filterRoom) filtered = filtered.filter(t => t.room === filterRoom);
+
+  // Titel
+  if (filterRoom) title.textContent = `${filterFloor} · ${filterRoom}`;
+  else if (filterFloor) title.textContent = filterFloor;
+  else title.textContent = 'Fällige Aufgaben';
+
+  if (lastDueTasks.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">✨</div>
@@ -144,8 +229,16 @@ async function loadToday(silent) {
       </div>`;
     return;
   }
-
-  list.innerHTML = tasks.map(renderTaskCard).join('');
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🎯</div>
+        <div class="title">Hier ist gerade nichts zu tun.</div>
+        <div class="subtitle">In diesem Bereich ist alles aktuell.</div>
+      </div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(renderTaskCard).join('');
 }
 
 function renderTaskCard(t) {
